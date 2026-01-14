@@ -1,0 +1,21 @@
+name: webapp
+description: Python Flask web application
+command: /usr/bin/python3
+args:
+  - -m
+  - flask
+  - run
+  - --host
+  - "0.0.0.0"
+workdir: /opt/webapp
+user: webapp
+environment:
+  FLASK_APP: app.py
+  FLASK_ENV: production
+  PORT: "5000"
+restart: always
+timeout_start: 30
+timeout_stop: 15
+private_tmp: true
+protect_system: full
+no_new_privileges: true

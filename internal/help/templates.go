@@ -1,0 +1,226 @@
+package help
+
+import "fmt"
+
+// ShowMain displays the main help text
+func ShowMain() {
+	fmt.Print(`SMDCTL - Systemd Control CLI
+
+DESCRIPTION:
+  smdctl provides a Docker-like interface for managing systemd services.
+  It allows you to create, start, stop, and manage system services using
+  familiar Docker command syntax.
+
+  This tool is designed to be AI-friendly. The help output serves as
+  structured guidance for LLM agents to understand available operations
+  and troubleshooting workflows.
+
+USAGE:
+  smdctl [OPTIONS] COMMAND [ARGS...]
+
+CORE COMMANDS:
+  run        Create and start a new systemd service
+             Example: smdctl run myapp -- /usr/bin/python3 /opt/app/server.py
+             Example: smdctl run -f smdctl.yml  (load from config file)
+             
+  ps         List systemd services managed by smdctl
+             Example: smdctl ps
+             Example: smdctl ps -a  (show all, including stopped)
+             
+  start      Start one or more services
+             Example: smdctl start myapp
+             
+  stop       Stop one or more services
+             Example: smdctl stop myapp
+             
+  restart    Restart one or more services
+             Example: smdctl restart myapp
+             
+  logs       View service logs (uses journalctl)
+             Example: smdctl logs myapp
+             Example: smdctl logs -f myapp  (follow logs)
+             Example: smdctl logs -n 100 myapp  (last 100 lines)
+             
+  status     Show detailed status of a service
+             Example: smdctl status myapp
+             
+  rm         Remove a service (stops and deletes service file)
+             Example: smdctl rm myapp
+             Example: smdctl rm -f myapp  (force, don't prompt)
+             
+  env        Edit environment variables for a service
+             Example: smdctl env myapp  (opens $EDITOR)
+             
+  inspect    Show service configuration in YAML format
+             Example: smdctl inspect myapp
+             
+  explain    Show what a command will do without executing it
+             Example: smdctl explain run myapp -- /usr/bin/node server.js
+
+YAML CONFIGURATION:
+  smdctl supports defining services in YAML files (similar to docker-compose).
+  
+  Create a file named 'smdctl.yml' in your project directory:
+  
+    name: myapp
+    description: My application
+    command: /usr/bin/python3
+    args:
+      - /opt/app/server.py
+      - --port
+      - "8080"
+    workdir: /opt/app
+    user: webapp
+    environment:
+      PORT: "8080"
+      DEBUG: "true"
+    restart: always
+    timeout_start: 90
+  
+  Then run: smdctl run -f smdctl.yml
+  
+  CLI flags override YAML values:
+    smdctl run -f smdctl.yml -e PORT=9090  (overrides PORT from YAML)
+
+ENVIRONMENT VARIABLES:
+  When you use -e/--env flags, smdctl creates an environment file at:
+    /etc/smdctl/env/<service-name>.env
+    
+  You can later edit this file with:
+    smdctl env <service-name>
+    
+  This opens $EDITOR (or nano if not set) to modify the environment.
+
+PERMISSIONS:
+  Most operations require root/sudo access. If you run smdctl without
+  sudo, it will automatically prompt for your password and re-execute
+  with elevated privileges.
+
+SYSTEMD INTEGRATION:
+  smdctl creates service files in: /etc/systemd/system/smdctl-<name>.service
+  Services are prefixed with 'smdctl-' to avoid conflicts with system services.
+  All operations use standard systemctl commands under the hood.
+
+AI ASSISTANT WORKFLOW GUIDANCE:
+  
+  After creating a service with 'run':
+    → Check status: smdctl status <name>
+    → View logs: smdctl logs -f <name>
+    → List all services: smdctl ps
+    
+  If a service fails to start:
+    → Check detailed status: smdctl status <name>
+    → View recent logs: smdctl logs -n 50 <name>
+    → Verify the executable path exists
+    → Check environment variables: smdctl env <name>
+    → Use explain to see what would be created: smdctl explain run <name> ...
+    
+  To modify a running service:
+    1. Stop it: smdctl stop <name>
+    2. Edit environment: smdctl env <name>
+    3. Restart it: smdctl start <name>
+    
+  To remove a service completely:
+    → smdctl rm <name>
+    
+  Common troubleshooting steps:
+    1. smdctl status <name> - Check service state
+    2. smdctl logs -n 100 <name> - Check recent logs
+    3. smdctl inspect <name> - View full configuration
+    4. systemctl status smdctl-<name> - Raw systemd status
+    5. journalctl -u smdctl-<name> -n 100 - Raw journal logs
+
+EXAMPLES:
+  # Run a Python web server
+  smdctl run webapp -e PORT=8000 -- /usr/bin/python3 -m http.server 8000
+  
+  # Run a Node.js app with multiple env vars
+  smdctl run nodeapp \
+    -e NODE_ENV=production \
+    -e PORT=3000 \
+    --restart always \
+    --workdir /opt/nodeapp \
+    -- /usr/bin/node index.js
+  
+  # Run from YAML config
+  smdctl run -f smdctl.yml
+  
+  # List all services
+  smdctl ps
+  
+  # View live logs
+  smdctl logs -f webapp
+  
+  # Check service status
+  smdctl status webapp
+  
+  # Edit environment variables
+  smdctl env webapp
+  
+  # Inspect full configuration
+  smdctl inspect webapp
+  
+  # Stop and remove a service
+  smdctl stop webapp
+  smdctl rm webapp
+
+For command-specific help, use:
+  smdctl help <command>
+
+For more information: https://github.com/snowbear/smdctl
+`)
+}
+
+// ShowRun displays help for the run command
+func ShowRun() {
+	fmt.Print(`smdctl run - Create and start a new systemd service
+
+USAGE:
+  smdctl run [OPTIONS] NAME -- COMMAND [ARGS...]
+  smdctl run [OPTIONS] -f FILE
+
+OPTIONS:
+  -f, --file FILE              YAML config file (default: ./smdctl.yml)
+  -e, --env KEY=VALUE          Set environment variable (repeatable)
+  --restart POLICY             Restart policy: no|on-failure|always (default: always)
+  --user USER                  Run as specific user
+  --workdir PATH               Working directory
+  --description TEXT           Service description
+  --timeout-start SECONDS      Startup timeout (default: 90)
+  --timeout-stop SECONDS       Stop timeout (default: 30)
+  --kill-mode MODE             Kill mode: control-group|process|mixed (default: control-group)
+  --private-tmp                Use private /tmp directory
+  --protect-system LEVEL       Protect system directories: no|strict|full
+  --no-new-privileges          Prevent privilege escalation
+  --limit-nofile N             File descriptor limit
+  --after TARGET               systemd After= dependency (repeatable)
+  --wants TARGET               systemd Wants= dependency (repeatable)
+
+SYNTAX NOTE:
+  The '--' separator is REQUIRED when specifying the command inline.
+  Everything after '--' is treated as the command to run.
+
+EXAMPLES:
+  # Run a Python web server
+  smdctl run webapp -e PORT=8000 -- /usr/bin/python3 -m http.server 8000
+  
+  # Run a Node.js app with restart policy
+  smdctl run nodeapp \
+    -e NODE_ENV=production \
+    --restart always \
+    --workdir /opt/nodeapp \
+    -- /usr/bin/node server.js
+  
+  # Run from YAML config file
+  smdctl run -f smdctl.yml
+  
+  # Override YAML values with CLI flags
+  smdctl run -f smdctl.yml -e PORT=9090 --user root
+
+AI WORKFLOW:
+  After running this command:
+    1. Check if service started: smdctl status <name>
+    2. View logs: smdctl logs -f <name>
+    3. If failed, check: smdctl logs -n 50 <name>
+`)
+}

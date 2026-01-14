@@ -1,0 +1,21 @@
+name: worker
+description: Background job processor
+command: /opt/worker/bin/worker
+args:
+  - --queue
+  - default
+  - --concurrency
+  - "4"
+workdir: /opt/worker
+user: worker
+environment:
+  REDIS_URL: redis://localhost:6379
+  LOG_LEVEL: info
+  WORKER_TIMEOUT: "3600"
+restart: always
+timeout_start: 60
+timeout_stop: 60
+kill_mode: mixed
+private_tmp: true
+limit_nofile: 10000
+tasks_max: 4096

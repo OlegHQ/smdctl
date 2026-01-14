@@ -1,0 +1,19 @@
+name: nodeapp
+description: Node.js API service
+command: /usr/bin/node
+args:
+  - server.js
+workdir: /opt/nodeapp
+user: nodeuser
+environment:
+  NODE_ENV: production
+  PORT: "3000"
+  DB_HOST: localhost
+  DB_NAME: myapp
+restart: always
+timeout_start: 60
+limit_nofile: 65536
+after:
+  - network-online.target
+wants:
+  - network-online.target

@@ -1,0 +1,35 @@
+# Binaries
+/bin/
+smdctl
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage.txt
+coverage.html
+
+# Environment files (might contain secrets)
+.env
+*.env.local
