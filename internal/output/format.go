@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // FormatServicesTable formats services as a table

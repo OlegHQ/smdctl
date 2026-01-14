@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Logs displays service logs using journalctl

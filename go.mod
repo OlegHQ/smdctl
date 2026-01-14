@@ -1,4 +1,4 @@
-module github.com/snowbear/smdctl
+module github.com/nexo-tech/smdctl
 
 go 1.25.5
 

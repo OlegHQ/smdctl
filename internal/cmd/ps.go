@@ -4,8 +4,8 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/snowbear/smdctl/internal/output"
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/output"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // PS lists all smdctl-managed services

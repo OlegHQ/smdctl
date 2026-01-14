@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Explain shows what a command will do without executing it

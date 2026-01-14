@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/snowbear/smdctl/internal/sudo"
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/sudo"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Restart restarts one or more services

@@ -7,10 +7,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/snowbear/smdctl/internal/config"
-	"github.com/snowbear/smdctl/internal/output"
-	"github.com/snowbear/smdctl/internal/sudo"
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/config"
+	"github.com/nexo-tech/smdctl/internal/output"
+	"github.com/nexo-tech/smdctl/internal/sudo"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Run creates and starts a new systemd service

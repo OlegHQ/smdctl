@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/snowbear/smdctl/internal/cmd"
-	"github.com/snowbear/smdctl/internal/help"
+	"github.com/nexo-tech/smdctl/internal/cmd"
+	"github.com/nexo-tech/smdctl/internal/help"
 )
 
 var Version = "dev"

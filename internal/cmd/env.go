@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/snowbear/smdctl/internal/env"
-	"github.com/snowbear/smdctl/internal/sudo"
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/env"
+	"github.com/nexo-tech/smdctl/internal/sudo"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Env edits the environment file for a service

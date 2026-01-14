@@ -17,7 +17,7 @@ A Docker-like CLI interface for managing systemd services. Designed to be AI-fri
 
 ```bash
 # Clone the repository
-git clone https://github.com/snowbear/smdctl.git
+git clone https://github.com/nexo-tech/smdctl.git
 cd smdctl
 
 # Build and install

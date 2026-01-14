@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/snowbear/smdctl/internal/output"
-	"github.com/snowbear/smdctl/internal/systemd"
+	"github.com/nexo-tech/smdctl/internal/output"
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Inspect shows service configuration in YAML format

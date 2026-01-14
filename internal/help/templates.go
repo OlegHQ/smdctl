@@ -167,7 +167,7 @@ EXAMPLES:
 For command-specific help, use:
   smdctl help <command>
 
-For more information: https://github.com/snowbear/smdctl
+For more information: https://github.com/nexo-tech/smdctl
 `)
 }
 
