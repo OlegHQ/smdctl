@@ -29,14 +29,25 @@ func Logs(args []string) error {
 
 	serviceName := fs.Arg(0)
 
+	// Discover mode
+	mode, err := systemd.DiscoverServiceMode(serviceName)
+	if err != nil {
+		return err
+	}
+
 	// Verify service exists
-	mgr := systemd.NewManager()
+	mgr := systemd.NewManagerWithMode(mode)
 	if !mgr.ServiceExists(serviceName) {
 		return fmt.Errorf("service not found: %s", serviceName)
 	}
 
 	// Build journalctl command
 	cmdArgs := []string{"-u", systemd.ServiceName(serviceName)}
+
+	// Add --user flag if in user mode
+	if mode == systemd.ModeUser {
+		cmdArgs = append([]string{"--user"}, cmdArgs...)
+	}
 
 	if *follow {
 		cmdArgs = append(cmdArgs, "-f")

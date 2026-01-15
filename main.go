@@ -44,6 +44,8 @@ func main() {
 		err = cmd.Inspect(args)
 	case "explain":
 		err = cmd.Explain(args)
+	case "migrate":
+		err = cmd.Migrate(args)
 	case "help", "--help", "-h":
 		if len(args) > 0 {
 			showCommandHelp(args[0])

@@ -2,6 +2,8 @@ package systemd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -35,11 +37,16 @@ func GenerateServiceFile(svc *Service) string {
 		sb.WriteString(fmt.Sprintf("Description=smdctl managed service: %s\n", svc.Name))
 	}
 
-	// After dependencies
+	// After dependencies - different defaults for user vs system
 	if len(svc.After) > 0 {
 		sb.WriteString(fmt.Sprintf("After=%s\n", strings.Join(svc.After, " ")))
 	} else {
-		sb.WriteString("After=network-online.target\n")
+		if svc.Mode == ModeUser {
+			// User services don't need network-online.target
+			sb.WriteString("After=default.target\n")
+		} else {
+			sb.WriteString("After=network-online.target\n")
+		}
 	}
 
 	// Wants dependencies
@@ -71,13 +78,13 @@ func GenerateServiceFile(svc *Service) string {
 		sb.WriteString(fmt.Sprintf("WorkingDirectory=%s\n", svc.WorkDir))
 	}
 
-	// User
-	if svc.User != "" {
+	// User - only for system mode services
+	if svc.Mode == ModeSystem && svc.User != "" {
 		sb.WriteString(fmt.Sprintf("User=%s\n", svc.User))
 	}
 
 	// Environment file
-	envFile := fmt.Sprintf("/etc/smdctl/env/%s.env", svc.Name)
+	envFile := EnvFilePath(svc.Name, svc.Mode)
 	sb.WriteString(fmt.Sprintf("EnvironmentFile=-%s\n", envFile))
 
 	// Timeouts
@@ -114,9 +121,13 @@ func GenerateServiceFile(svc *Service) string {
 
 	sb.WriteString("\n")
 
-	// [Install] section
+	// [Install] section - different for user vs system
 	sb.WriteString("[Install]\n")
-	sb.WriteString("WantedBy=multi-user.target\n")
+	if svc.Mode == ModeUser {
+		sb.WriteString("WantedBy=default.target\n")
+	} else {
+		sb.WriteString("WantedBy=multi-user.target\n")
+	}
 
 	return sb.String()
 }
@@ -126,9 +137,46 @@ func ServiceFileName(name string) string {
 	return fmt.Sprintf("%s%s.service", servicePrefix, name)
 }
 
-// ServicePath returns the full path to the service file
-func ServicePath(name string) string {
-	return fmt.Sprintf("/etc/systemd/system/%s", ServiceFileName(name))
+// ServicePath returns the full path to the service file based on mode
+func ServicePath(name string, mode SystemdMode) string {
+	if mode == ModeSystem {
+		return fmt.Sprintf("/etc/systemd/system/%s", ServiceFileName(name))
+	}
+
+	// User mode: ~/.config/systemd/user/
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		// Fallback to /etc if home dir unavailable
+		return fmt.Sprintf("/etc/systemd/system/%s", ServiceFileName(name))
+	}
+	return fmt.Sprintf("%s/.config/systemd/user/%s", homeDir, ServiceFileName(name))
+}
+
+// EnvFilePath returns the path to environment file based on mode
+func EnvFilePath(name string, mode SystemdMode) string {
+	if mode == ModeSystem {
+		return fmt.Sprintf("/etc/smdctl/env/%s.env", name)
+	}
+
+	// User mode: ~/.config/smdctl/env/
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Sprintf("/etc/smdctl/env/%s.env", name)
+	}
+	return fmt.Sprintf("%s/.config/smdctl/env/%s.env", homeDir, name)
+}
+
+// GetConfigDir returns the config directory for the given mode
+func GetConfigDir(mode SystemdMode) (string, error) {
+	if mode == ModeSystem {
+		return "/etc/smdctl/env", nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home directory: %w", err)
+	}
+	return filepath.Join(homeDir, ".config/smdctl/env"), nil
 }
 
 // ServiceName returns the full service name (with prefix)

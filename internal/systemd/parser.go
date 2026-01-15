@@ -150,7 +150,8 @@ func (m *Manager) GetStatus(name string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	cmd := exec.Command("systemctl", "status", ServiceName(name), "--no-pager", "-l")
+	cmdArgs := m.buildSystemctlArgs("status", ServiceName(name), "--no-pager", "-l")
+	cmd := exec.Command("systemctl", cmdArgs...)
 	output, _ := cmd.CombinedOutput() // Don't treat non-zero exit as error (inactive services return non-zero)
 
 	return string(output), nil

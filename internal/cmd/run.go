@@ -21,6 +21,9 @@ func Run(args []string) error {
 	configFile := fs.String("f", "", "YAML config file")
 	fs.StringVar(configFile, "file", "", "YAML config file")
 
+	// System mode flag
+	systemMode := fs.Bool("system", false, "Force system mode (requires sudo)")
+
 	// Service options
 	var envVars []string
 	fs.Func("e", "Environment variable (repeatable)", func(s string) error {
@@ -46,11 +49,6 @@ func Run(args []string) error {
 
 	if err := fs.Parse(args); err != nil {
 		return err
-	}
-
-	// Check for sudo
-	if sudo.NeedsSudo() {
-		return sudo.ReExecWithSudo()
 	}
 
 	var svc *systemd.Service
@@ -91,8 +89,25 @@ func Run(args []string) error {
 		return fmt.Errorf("command is required")
 	}
 
-	// Create the service
-	mgr := systemd.NewManager()
+	// Detect mode based on port requirements
+	svc.Mode = systemd.DetectMode(svc, *systemMode)
+
+	// Check for sudo only if system mode is needed
+	if svc.Mode == systemd.ModeSystem {
+		if sudo.NeedsSudoForSystem() {
+			return sudo.ReExecWithSudo()
+		}
+		fmt.Printf("Running in system mode (elevated port or --system flag)\n")
+	} else {
+		fmt.Printf("Running in user mode\n")
+
+		// Check lingering for user mode
+		lc := systemd.NewLingerChecker()
+		lc.WarnIfDisabled()
+	}
+
+	// Create the service with appropriate manager
+	mgr := systemd.NewManagerWithMode(svc.Mode)
 
 	fmt.Printf("Creating service: %s\n", svc.Name)
 
@@ -114,7 +129,7 @@ func Run(args []string) error {
 
 		// Prompt to view logs
 		if output.PromptYesNo("Service failed to start. View logs?", true) {
-			showRecentLogs(svc.Name, 10)
+			showRecentLogs(svc.Name, 10, svc.Mode)
 		}
 
 		return fmt.Errorf("failed to start service")
@@ -122,7 +137,14 @@ func Run(args []string) error {
 
 	// Success!
 	fmt.Printf("\n%s\n\n", systemd.ServiceName(svc.Name))
-	fmt.Printf("Service started successfully.\n\n")
+	fmt.Printf("Service started successfully in %s mode.\n\n", svc.Mode)
+
+	// Show service file location
+	servicePath := systemd.ServicePath(svc.Name, svc.Mode)
+	envPath := systemd.EnvFilePath(svc.Name, svc.Mode)
+	fmt.Printf("Service file: %s\n", servicePath)
+	fmt.Printf("Env file:     %s\n\n", envPath)
+
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  Check status:  smdctl status %s\n", svc.Name)
 	fmt.Printf("  View logs:     smdctl logs -f %s\n", svc.Name)
@@ -132,7 +154,7 @@ func Run(args []string) error {
 }
 
 func configToService(cfg *config.ServiceConfig) *systemd.Service {
-	return &systemd.Service{
+	svc := &systemd.Service{
 		Name:            cfg.Name,
 		Description:     cfg.Description,
 		Command:         cfg.Command,
@@ -152,6 +174,15 @@ func configToService(cfg *config.ServiceConfig) *systemd.Service {
 		LimitNOFILE:     cfg.LimitNOFILE,
 		TasksMax:        cfg.TasksMax,
 	}
+
+	// Set mode based on SystemMode config
+	// If SystemMode is true, force system mode
+	// Otherwise, leave as 0 (will be auto-detected based on port)
+	if cfg.SystemMode {
+		svc.Mode = systemd.ModeSystem
+	}
+
+	return svc
 }
 
 func parseCommandLine(fs *flag.FlagSet) *systemd.Service {
@@ -242,12 +273,16 @@ func applyOverrides(svc *systemd.Service, fs *flag.FlagSet, envVars []string,
 	}
 }
 
-func showRecentLogs(serviceName string, lines int) {
+func showRecentLogs(serviceName string, lines int, mode systemd.SystemdMode) {
 	fmt.Printf("\nRecent logs (last %d lines):\n", lines)
 	fmt.Println(strings.Repeat("─", 60))
 
-	cmd := exec.Command("journalctl", "-u", systemd.ServiceName(serviceName),
-		"-n", fmt.Sprintf("%d", lines), "--no-pager")
+	args := []string{"-u", systemd.ServiceName(serviceName), "-n", fmt.Sprintf("%d", lines), "--no-pager"}
+	if mode == systemd.ModeUser {
+		args = append([]string{"--user"}, args...)
+	}
+
+	cmd := exec.Command("journalctl", args...)
 	output, _ := cmd.CombinedOutput()
 	fmt.Print(string(output))
 

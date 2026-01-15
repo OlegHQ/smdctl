@@ -17,6 +17,7 @@ type ServiceConfig struct {
 	User            string            `yaml:"user"`
 	Environment     map[string]string `yaml:"environment"`
 	Restart         string            `yaml:"restart"`
+	SystemMode      bool              `yaml:"system_mode"`
 	TimeoutStart    int               `yaml:"timeout_start"`
 	TimeoutStop     int               `yaml:"timeout_stop"`
 	KillMode        string            `yaml:"kill_mode"`

@@ -18,11 +18,11 @@ func FormatServicesTable(services []*systemd.ServiceInfo) {
 	}
 
 	// Print header
-	fmt.Printf("%-15s %-8s %-10s %-6s %-12s %-15s %s\n",
-		"NAME", "PID", "STATUS", "CPU%", "MEMORY", "UPTIME", "DESCRIPTION")
+	fmt.Printf("%-15s %-7s %-8s %-10s %-6s %-12s %-15s %s\n",
+		"NAME", "MODE", "PID", "STATUS", "CPU%", "MEMORY", "UPTIME", "DESCRIPTION")
 
 	// Print separator
-	fmt.Println(strings.Repeat("-", 100))
+	fmt.Println(strings.Repeat("-", 110))
 
 	// Print services
 	for _, svc := range services {
@@ -56,8 +56,8 @@ func FormatServicesTable(services []*systemd.ServiceInfo) {
 			desc = desc[:37] + "..."
 		}
 
-		fmt.Printf("%-15s %-8s %-10s %-6s %-12s %-15s %s\n",
-			svc.Name, pid, status, cpu, memory, uptime, desc)
+		fmt.Printf("%-15s %-7s %-8s %-10s %-6s %-12s %-15s %s\n",
+			svc.Name, svc.Mode, pid, status, cpu, memory, uptime, desc)
 	}
 }
 

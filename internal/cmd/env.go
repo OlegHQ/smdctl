@@ -16,15 +16,22 @@ func Env(args []string) error {
 
 	serviceName := args[0]
 
+	// Discover mode
+	mode, err := systemd.DiscoverServiceMode(serviceName)
+	if err != nil {
+		return err
+	}
+
 	// Verify service exists
-	mgr := systemd.NewManager()
+	mgr := systemd.NewManagerWithMode(mode)
 	if !mgr.ServiceExists(serviceName) {
 		return fmt.Errorf("service not found: %s", serviceName)
 	}
 
-	if sudo.NeedsSudo() {
+	// Check for sudo only if system mode
+	if mode == systemd.ModeSystem && sudo.NeedsSudoForSystem() {
 		return sudo.ReExecWithSudo()
 	}
 
-	return env.Edit(serviceName)
+	return env.Edit(serviceName, mode)
 }

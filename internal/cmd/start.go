@@ -13,13 +13,28 @@ func Start(args []string) error {
 		return fmt.Errorf("usage: smdctl start SERVICE [SERVICE...]")
 	}
 
-	if sudo.NeedsSudo() {
+	// Discover mode for first service to determine sudo needs
+	// (In practice, users typically manage services of one mode at a time)
+	mode, err := systemd.DiscoverServiceMode(args[0])
+	if err != nil {
+		return err
+	}
+
+	// Check for sudo only if system mode
+	if mode == systemd.ModeSystem && sudo.NeedsSudoForSystem() {
 		return sudo.ReExecWithSudo()
 	}
 
-	mgr := systemd.NewManager()
+	mgr := systemd.NewManagerWithMode(mode)
 
 	for _, name := range args {
+		// Update mode for each service (in case of mixed modes)
+		currentMode, err := systemd.DiscoverServiceMode(name)
+		if err != nil {
+			return err
+		}
+		mgr.SetMode(currentMode)
+
 		fmt.Printf("Starting service %s...\n", name)
 
 		if err := mgr.Start(name); err != nil {

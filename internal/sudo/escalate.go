@@ -6,8 +6,8 @@ import (
 	"os/exec"
 )
 
-// NeedsSudo checks if we need sudo privileges
-func NeedsSudo() bool {
+// NeedsSudoForSystem checks if we need sudo for system mode operations
+func NeedsSudoForSystem() bool {
 	// Already running as root
 	if os.Getuid() == 0 {
 		return false
@@ -22,6 +22,11 @@ func NeedsSudo() bool {
 	f.Close()
 	os.Remove(testFile)
 	return false // Already have permissions
+}
+
+// NeedsSudoForUser returns false - user mode doesn't need sudo
+func NeedsSudoForUser() bool {
+	return false
 }
 
 // ReExecWithSudo re-executes the current command with sudo

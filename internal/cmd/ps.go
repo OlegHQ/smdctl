@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/nexo-tech/smdctl/internal/output"
 	"github.com/nexo-tech/smdctl/internal/systemd"
@@ -20,17 +19,35 @@ func PS(args []string) error {
 		return err
 	}
 
-	mgr := systemd.NewManager()
+	// Collect services from both user and system modes
+	var allServices []*systemd.ServiceInfo
 
-	services, err := mgr.ListServices(*all)
-	if err != nil {
-		return fmt.Errorf("list services: %w", err)
+	// Get user services
+	userMgr := systemd.NewManagerWithMode(systemd.ModeUser)
+	userServices, err := userMgr.ListServices(*all)
+	if err == nil {
+		// Add mode info to each service
+		for _, svc := range userServices {
+			svc.Mode = systemd.ModeUser
+			allServices = append(allServices, svc)
+		}
+	}
+
+	// Get system services
+	systemMgr := systemd.NewManagerWithMode(systemd.ModeSystem)
+	systemServices, err := systemMgr.ListServices(*all)
+	if err == nil {
+		// Add mode info to each service
+		for _, svc := range systemServices {
+			svc.Mode = systemd.ModeSystem
+			allServices = append(allServices, svc)
+		}
 	}
 
 	if *quiet {
-		output.FormatServicesQuiet(services)
+		output.FormatServicesQuiet(allServices)
 	} else {
-		output.FormatServicesTable(services)
+		output.FormatServicesTable(allServices)
 	}
 
 	return nil

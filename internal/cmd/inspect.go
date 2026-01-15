@@ -17,7 +17,13 @@ func Inspect(args []string) error {
 
 	serviceName := args[0]
 
-	mgr := systemd.NewManager()
+	// Discover mode
+	mode, err := systemd.DiscoverServiceMode(serviceName)
+	if err != nil {
+		return err
+	}
+
+	mgr := systemd.NewManagerWithMode(mode)
 
 	// Verify service exists
 	if !mgr.ServiceExists(serviceName) {
@@ -37,7 +43,7 @@ func Inspect(args []string) error {
 	}
 
 	// Parse environment file if exists
-	envPath := fmt.Sprintf("/etc/smdctl/env/%s.env", serviceName)
+	envPath := systemd.EnvFilePath(serviceName, mode)
 	envVars := make(map[string]string)
 	if envContent, err := os.ReadFile(envPath); err == nil {
 		lines := strings.Split(string(envContent), "\n")
@@ -63,7 +69,7 @@ func Inspect(args []string) error {
 		"uptime":      info.Uptime.String(),
 		"environment": envVars,
 		"files": map[string]string{
-			"service_file": systemd.ServicePath(serviceName),
+			"service_file": systemd.ServicePath(serviceName, mode),
 			"env_file":     envPath,
 		},
 		"resources": map[string]interface{}{

@@ -2,8 +2,31 @@ package systemd
 
 import "time"
 
+// SystemdMode represents the mode of systemd operation
+type SystemdMode int
+
+const (
+	// ModeUser represents userspace systemd (--user)
+	ModeUser SystemdMode = iota
+	// ModeSystem represents system systemd (requires root)
+	ModeSystem
+)
+
+// String returns the string representation of the mode
+func (m SystemdMode) String() string {
+	switch m {
+	case ModeUser:
+		return "user"
+	case ModeSystem:
+		return "system"
+	default:
+		return "unknown"
+	}
+}
+
 // Service represents a systemd service configuration
 type Service struct {
+	Mode        SystemdMode
 	Name        string
 	Description string
 	Command     string
@@ -36,6 +59,7 @@ type ServiceInfo struct {
 	Description string
 	CPUPercent  float64
 	MemoryBytes uint64
+	Mode        SystemdMode
 }
 
 // Stats represents resource usage statistics

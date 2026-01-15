@@ -10,11 +10,28 @@ import (
 )
 
 // Manager handles systemd operations
-type Manager struct{}
+type Manager struct {
+	mode SystemdMode
+}
 
-// NewManager creates a new systemd manager
+// NewManager creates a manager in user mode by default
 func NewManager() *Manager {
-	return &Manager{}
+	return &Manager{mode: ModeUser}
+}
+
+// NewManagerWithMode creates a manager with specific mode
+func NewManagerWithMode(mode SystemdMode) *Manager {
+	return &Manager{mode: mode}
+}
+
+// SetMode changes the manager mode
+func (m *Manager) SetMode(mode SystemdMode) {
+	m.mode = mode
+}
+
+// GetMode returns the current mode
+func (m *Manager) GetMode() SystemdMode {
+	return m.mode
 }
 
 // Create creates a new systemd service
@@ -23,6 +40,14 @@ func (m *Manager) Create(svc *Service) error {
 		return err
 	}
 
+	// Detect mode if not set
+	if svc.Mode == 0 {
+		svc.Mode = ModeUser // Default to user mode
+	}
+
+	// Update manager mode to match service
+	m.SetMode(svc.Mode)
+
 	// Check if service already exists
 	if m.ServiceExists(svc.Name) {
 		return fmt.Errorf("%w: %s", ErrServiceAlreadyExists, svc.Name)
@@ -30,7 +55,13 @@ func (m *Manager) Create(svc *Service) error {
 
 	// Generate service file content
 	content := GenerateServiceFile(svc)
-	path := ServicePath(svc.Name)
+	path := ServicePath(svc.Name, svc.Mode)
+
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create service directory: %w", err)
+	}
 
 	// Write service file
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
@@ -54,8 +85,12 @@ func (m *Manager) Create(svc *Service) error {
 
 // CreateEnvFile creates an environment file for a service
 func (m *Manager) CreateEnvFile(serviceName string, env map[string]string) error {
+	envDir, err := GetConfigDir(m.mode)
+	if err != nil {
+		return fmt.Errorf("get config directory: %w", err)
+	}
+
 	// Create directory if it doesn't exist
-	envDir := "/etc/smdctl/env"
 	if err := os.MkdirAll(envDir, 0755); err != nil {
 		return fmt.Errorf("create env directory: %w", err)
 	}
@@ -80,9 +115,24 @@ func (m *Manager) CreateEnvFile(serviceName string, env map[string]string) error
 
 // ServiceExists checks if a service exists
 func (m *Manager) ServiceExists(name string) bool {
-	path := ServicePath(name)
-	_, err := os.Stat(path)
-	return err == nil
+	// Check in current mode
+	path := ServicePath(name, m.mode)
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+
+	// Also check other mode for migration scenarios
+	otherMode := ModeSystem
+	if m.mode == ModeSystem {
+		otherMode = ModeUser
+	}
+
+	otherPath := ServicePath(name, otherMode)
+	if _, err := os.Stat(otherPath); err == nil {
+		return true
+	}
+
+	return false
 }
 
 // Start starts a service
@@ -143,13 +193,13 @@ func (m *Manager) Remove(name string) error {
 	_ = m.Disable(name)
 
 	// Remove service file
-	path := ServicePath(name)
+	path := ServicePath(name, m.mode)
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("remove service file: %w", err)
 	}
 
 	// Remove environment file if exists
-	envPath := fmt.Sprintf("/etc/smdctl/env/%s.env", name)
+	envPath := EnvFilePath(name, m.mode)
 	_ = os.Remove(envPath)
 
 	// Reload systemd daemon
@@ -165,14 +215,23 @@ func (m *Manager) DaemonReload() error {
 	return m.systemctl("daemon-reload")
 }
 
+// buildSystemctlArgs adds --user flag if in user mode
+func (m *Manager) buildSystemctlArgs(args ...string) []string {
+	if m.mode == ModeUser {
+		return append([]string{"--user"}, args...)
+	}
+	return args
+}
+
 // systemctl executes a systemctl command
 func (m *Manager) systemctl(args ...string) error {
-	cmd := exec.Command("systemctl", args...)
+	cmdArgs := m.buildSystemctlArgs(args...)
+	cmd := exec.Command("systemctl", cmdArgs...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("systemctl %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
+		return fmt.Errorf("systemctl %s: %w\n%s", strings.Join(cmdArgs, " "), err, stderr.String())
 	}
 
 	return nil
@@ -180,13 +239,14 @@ func (m *Manager) systemctl(args ...string) error {
 
 // systemctlOutput executes a systemctl command and returns output
 func (m *Manager) systemctlOutput(args ...string) (string, error) {
-	cmd := exec.Command("systemctl", args...)
+	cmdArgs := m.buildSystemctlArgs(args...)
+	cmd := exec.Command("systemctl", cmdArgs...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("systemctl %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
+		return "", fmt.Errorf("systemctl %s: %w\n%s", strings.Join(cmdArgs, " "), err, stderr.String())
 	}
 
 	return stdout.String(), nil
@@ -194,7 +254,8 @@ func (m *Manager) systemctlOutput(args ...string) (string, error) {
 
 // IsActive checks if a service is active
 func (m *Manager) IsActive(name string) bool {
-	cmd := exec.Command("systemctl", "is-active", ServiceName(name))
+	cmdArgs := m.buildSystemctlArgs("is-active", ServiceName(name))
+	cmd := exec.Command("systemctl", cmdArgs...)
 	return cmd.Run() == nil
 }
 
@@ -204,7 +265,7 @@ func (m *Manager) GetServiceFile(name string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	content, err := os.ReadFile(ServicePath(name))
+	content, err := os.ReadFile(ServicePath(name, m.mode))
 	if err != nil {
 		return "", fmt.Errorf("read service file: %w", err)
 	}

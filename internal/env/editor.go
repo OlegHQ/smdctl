@@ -4,17 +4,22 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+
+	"github.com/nexo-tech/smdctl/internal/systemd"
 )
 
 // Edit opens the environment file for a service in an editor
-func Edit(serviceName string) error {
-	envPath := filepath.Join("/etc/smdctl/env", serviceName+".env")
+func Edit(serviceName string, mode systemd.SystemdMode) error {
+	envPath := systemd.EnvFilePath(serviceName, mode)
 
 	// Create file if it doesn't exist
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		// Create directory if needed
-		if err := os.MkdirAll("/etc/smdctl/env", 0755); err != nil {
+		envDir, err := systemd.GetConfigDir(mode)
+		if err != nil {
+			return fmt.Errorf("get config directory: %w", err)
+		}
+		if err := os.MkdirAll(envDir, 0755); err != nil {
 			return fmt.Errorf("create env directory: %w", err)
 		}
 

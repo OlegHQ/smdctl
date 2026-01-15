@@ -15,7 +15,13 @@ func Status(args []string) error {
 
 	serviceName := args[0]
 
-	mgr := systemd.NewManager()
+	// Discover mode
+	mode, err := systemd.DiscoverServiceMode(serviceName)
+	if err != nil {
+		return err
+	}
+
+	mgr := systemd.NewManagerWithMode(mode)
 
 	// Verify service exists
 	if !mgr.ServiceExists(serviceName) {
@@ -30,6 +36,7 @@ func Status(args []string) error {
 
 	// Print structured status
 	fmt.Printf("Service: %s (%s)\n", info.Name, systemd.ServiceName(info.Name))
+	fmt.Printf("Mode:    %s\n", mode)
 	fmt.Printf("Status:  %s (%s)\n", info.Status, info.SubState)
 
 	if info.PID > 0 {
@@ -48,12 +55,16 @@ func Status(args []string) error {
 		fmt.Printf("CPU:     %.1f%%\n", info.CPUPercent)
 	}
 
-	fmt.Printf("\nService File: %s\n", systemd.ServicePath(serviceName))
-	fmt.Printf("Env File:     /etc/smdctl/env/%s.env\n", serviceName)
+	fmt.Printf("\nService File: %s\n", systemd.ServicePath(serviceName, mode))
+	fmt.Printf("Env File:     %s\n", systemd.EnvFilePath(serviceName, mode))
 
 	// Show systemctl status output
 	fmt.Printf("\n--- systemctl status output ---\n")
-	cmd := exec.Command("systemctl", "status", systemd.ServiceName(serviceName), "--no-pager", "-l", "-n", "10")
+	statusArgs := []string{"status", systemd.ServiceName(serviceName), "--no-pager", "-l", "-n", "10"}
+	if mode == systemd.ModeUser {
+		statusArgs = append([]string{"--user"}, statusArgs...)
+	}
+	cmd := exec.Command("systemctl", statusArgs...)
 	output, _ := cmd.CombinedOutput()
 	fmt.Print(string(output))
 
