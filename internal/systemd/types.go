@@ -57,14 +57,13 @@ type ServiceInfo struct {
 	SubState    string
 	Uptime      time.Duration
 	Description string
-	CPUPercent  float64
 	MemoryBytes uint64
+	Ports       []int // Listening ports (user services only)
 	Mode        SystemdMode
 }
 
 // Stats represents resource usage statistics
 type Stats struct {
-	CPUPercent      float64
 	MemoryBytes     uint64
 	MemoryFormatted string
 }

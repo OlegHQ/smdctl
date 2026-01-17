@@ -18,8 +18,8 @@ func FormatServicesTable(services []*systemd.ServiceInfo) {
 	}
 
 	// Print header
-	fmt.Printf("%-15s %-7s %-8s %-10s %-6s %-12s %-15s %s\n",
-		"NAME", "MODE", "PID", "STATUS", "CPU%", "MEMORY", "UPTIME", "DESCRIPTION")
+	fmt.Printf("%-15s %-6s %-8s %-10s %-10s %-12s %-14s %s\n",
+		"NAME", "MODE", "PID", "STATUS", "MEMORY", "UPTIME", "PORTS", "DESCRIPTION")
 
 	// Print separator
 	fmt.Println(strings.Repeat("-", 110))
@@ -29,11 +29,6 @@ func FormatServicesTable(services []*systemd.ServiceInfo) {
 		pid := "-"
 		if svc.PID > 0 {
 			pid = fmt.Sprintf("%d", svc.PID)
-		}
-
-		cpu := "-"
-		if svc.CPUPercent > 0 {
-			cpu = fmt.Sprintf("%.1f", svc.CPUPercent)
 		}
 
 		memory := "-"
@@ -51,14 +46,38 @@ func FormatServicesTable(services []*systemd.ServiceInfo) {
 			status = svc.Status
 		}
 
-		desc := svc.Description
-		if len(desc) > 40 {
-			desc = desc[:37] + "..."
+		ports := "-"
+		if len(svc.Ports) > 0 {
+			ports = formatPorts(svc.Ports)
 		}
 
-		fmt.Printf("%-15s %-7s %-8s %-10s %-6s %-12s %-15s %s\n",
-			svc.Name, svc.Mode, pid, status, cpu, memory, uptime, desc)
+		desc := svc.Description
+		if len(desc) > 30 {
+			desc = desc[:27] + "..."
+		}
+
+		fmt.Printf("%-15s %-6s %-8s %-10s %-10s %-12s %-14s %s\n",
+			svc.Name, svc.Mode, pid, status, memory, uptime, ports, desc)
 	}
+}
+
+// formatPorts formats a list of ports for display
+func formatPorts(ports []int) string {
+	if len(ports) == 0 {
+		return "-"
+	}
+
+	strs := make([]string, len(ports))
+	for i, p := range ports {
+		strs[i] = fmt.Sprintf("%d", p)
+	}
+
+	result := strings.Join(strs, ",")
+	// Truncate if too long
+	if len(result) > 13 {
+		return result[:10] + "..."
+	}
+	return result
 }
 
 // FormatServicesQuiet prints only service names

@@ -73,8 +73,8 @@ func Inspect(args []string) error {
 			"env_file":     envPath,
 		},
 		"resources": map[string]interface{}{
-			"memory_bytes": info.MemoryBytes,
-			"cpu_percent":  info.CPUPercent,
+			"memory_bytes":    info.MemoryBytes,
+			"listening_ports": info.Ports,
 		},
 		"service_file_content": serviceFile,
 	}

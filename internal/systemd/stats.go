@@ -2,41 +2,11 @@ package systemd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
-
-// GetServiceStats retrieves CPU and memory statistics for a service
-func GetServiceStats(serviceName string) (*Stats, error) {
-	cgroupPath := fmt.Sprintf(
-		"/sys/fs/cgroup/system.slice/%s.service",
-		ServiceName(serviceName),
-	)
-
-	// Check if cgroup exists
-	if _, err := os.Stat(cgroupPath); os.IsNotExist(err) {
-		return &Stats{}, nil
-	}
-
-	stats := &Stats{}
-
-	// Read memory usage
-	memPath := filepath.Join(cgroupPath, "memory.current")
-	if memBytes, err := os.ReadFile(memPath); err == nil {
-		if mem, err := strconv.ParseUint(strings.TrimSpace(string(memBytes)), 10, 64); err == nil {
-			stats.MemoryBytes = mem
-			stats.MemoryFormatted = formatBytes(mem)
-		}
-	}
-
-	// CPU usage calculation would require tracking previous values
-	// For now, we'll use a simplified approach or leave at 0
-	stats.CPUPercent = 0.0
-
-	return stats, nil
-}
 
 // formatBytes formats bytes into human-readable format
 func formatBytes(bytes uint64) string {
@@ -77,4 +47,91 @@ func FormatUptime(d int64) string {
 		return fmt.Sprintf("%dm %ds", minutes, seconds%60)
 	}
 	return fmt.Sprintf("%ds", seconds)
+}
+
+// pidPattern matches pid=N in ss output (e.g., pid=12345)
+var pidPattern = regexp.MustCompile(`pid=(\d+)`)
+
+// GetListeningPorts returns listening TCP/UDP ports for a given PID.
+// It uses `ss` to find sockets owned by the process.
+func GetListeningPorts(pid int) []int {
+	if pid <= 0 {
+		return nil
+	}
+
+	pidStr := strconv.Itoa(pid)
+	var ports []int
+	seen := make(map[int]bool)
+
+	// Run ss for TCP listening sockets
+	tcpOut, _ := exec.Command("ss", "-H", "-lntp").Output()
+	ports = appendPortsForPID(ports, seen, string(tcpOut), pidStr)
+
+	// Run ss for UDP listening sockets
+	udpOut, _ := exec.Command("ss", "-H", "-lnup").Output()
+	ports = appendPortsForPID(ports, seen, string(udpOut), pidStr)
+
+	return ports
+}
+
+// appendPortsForPID parses ss output lines and extracts ports owned by pidStr.
+// ss output example:
+// LISTEN  0  128  0.0.0.0:8080  0.0.0.0:*  users:(("myapp",pid=12345,fd=3))
+func appendPortsForPID(ports []int, seen map[int]bool, output, pidStr string) []int {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Check if line contains our PID
+		matches := pidPattern.FindAllStringSubmatch(line, -1)
+		ownerMatch := false
+		for _, m := range matches {
+			if len(m) > 1 && m[1] == pidStr {
+				ownerMatch = true
+				break
+			}
+		}
+		if !ownerMatch {
+			continue
+		}
+
+		// Extract local address:port (4th field typically)
+		// Format: State Recv-Q Send-Q Local-Address:Port Peer-Address:Port ...
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+
+		localAddr := fields[3]
+		// Handle IPv6 bracket notation [::]:port or plain addr:port
+		port := extractPort(localAddr)
+		if port > 0 && !seen[port] {
+			seen[port] = true
+			ports = append(ports, port)
+		}
+	}
+	return ports
+}
+
+// extractPort extracts port number from address string like "0.0.0.0:8080" or "[::]:8080"
+func extractPort(addr string) int {
+	// Handle IPv6 [::]:port
+	if idx := strings.LastIndex(addr, "]:"); idx != -1 {
+		portStr := addr[idx+2:]
+		if p, err := strconv.Atoi(portStr); err == nil {
+			return p
+		}
+		return 0
+	}
+
+	// Handle IPv4 or hostname:port
+	if idx := strings.LastIndex(addr, ":"); idx != -1 {
+		portStr := addr[idx+1:]
+		if p, err := strconv.Atoi(portStr); err == nil {
+			return p
+		}
+	}
+	return 0
 }

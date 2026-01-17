@@ -51,8 +51,8 @@ func Status(args []string) error {
 		fmt.Printf("Memory:  %s\n", formatBytes(info.MemoryBytes))
 	}
 
-	if info.CPUPercent > 0 {
-		fmt.Printf("CPU:     %.1f%%\n", info.CPUPercent)
+	if len(info.Ports) > 0 {
+		fmt.Printf("Ports:   %v\n", info.Ports)
 	}
 
 	fmt.Printf("\nService File: %s\n", systemd.ServicePath(serviceName, mode))

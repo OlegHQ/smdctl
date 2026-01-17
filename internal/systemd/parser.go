@@ -76,6 +76,7 @@ func (m *Manager) GetServiceInfo(name string) (*ServiceInfo, error) {
 		"SubState",
 		"Description",
 		"ActiveEnterTimestamp",
+		"MemoryCurrent",
 	}
 
 	info := &ServiceInfo{Name: name}
@@ -103,15 +104,19 @@ func (m *Manager) GetServiceInfo(name string) (*ServiceInfo, error) {
 					info.Uptime = time.Since(t)
 				}
 			}
+		case "MemoryCurrent":
+			// MemoryCurrent may be "[not set]" or a number
+			if value != "" && value != "[not set]" {
+				if mem, err := strconv.ParseUint(value, 10, 64); err == nil {
+					info.MemoryBytes = mem
+				}
+			}
 		}
 	}
 
-	// Get stats if service is active
-	if info.Status == "active" && info.PID > 0 {
-		if stats, err := GetServiceStats(name); err == nil {
-			info.CPUPercent = stats.CPUPercent
-			info.MemoryBytes = stats.MemoryBytes
-		}
+	// Get listening ports for user services with active PID
+	if m.mode == ModeUser && info.Status == "active" && info.PID > 0 {
+		info.Ports = GetListeningPorts(info.PID)
 	}
 
 	return info, nil
