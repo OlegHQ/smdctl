@@ -76,39 +76,15 @@ func explainRun(args []string) error {
 	}
 
 	fmt.Printf("EXPLANATION: smdctl run %s\n\n", strings.Join(args, " "))
-	fmt.Println("This command will perform the following steps:")
-	fmt.Println()
-	fmt.Println("1. Check for sudo privileges")
-	fmt.Println("   → If not root, re-execute with sudo")
-	fmt.Println()
-
-	if len(envVars) > 0 {
-		fmt.Println("2. Create environment file")
-		fmt.Printf("   → /etc/smdctl/env/%s.env\n", serviceName)
-		fmt.Println("   → Contents:")
-		for _, env := range envVars {
-			fmt.Printf("     %s\n", env)
+	// Detect whether this would run in userspace (default) or system mode.
+	forceSystem := false
+	for _, arg := range args {
+		if arg == "--system" {
+			forceSystem = true
+			break
 		}
-		fmt.Println()
 	}
 
-	fmt.Println("3. Generate systemd service file")
-	fmt.Printf("   → /etc/systemd/system/smdctl-%s.service\n", serviceName)
-	fmt.Println()
-
-	fmt.Println("4. Reload systemd daemon")
-	fmt.Println("   → systemctl daemon-reload")
-	fmt.Println()
-
-	fmt.Println("5. Enable service (start at boot)")
-	fmt.Printf("   → systemctl enable smdctl-%s\n", serviceName)
-	fmt.Println()
-
-	fmt.Println("6. Start service immediately")
-	fmt.Printf("   → systemctl start smdctl-%s\n", serviceName)
-	fmt.Println()
-
-	// Generate and show service file
 	svc := &systemd.Service{
 		Name:         serviceName,
 		Description:  fmt.Sprintf("smdctl managed service: %s", serviceName),
@@ -128,6 +104,68 @@ func explainRun(args []string) error {
 		}
 	}
 
+	mode := systemd.DetectMode(svc, forceSystem)
+
+	fmt.Println("This command will perform the following steps:")
+	fmt.Println()
+	fmt.Printf("1. Select systemd mode (default: userspace)\n")
+	fmt.Printf("   → %s mode\n", mode)
+	fmt.Println()
+
+	if mode == systemd.ModeSystem {
+		fmt.Println("2. Check for sudo privileges")
+		fmt.Println("   → If not root, re-execute with sudo")
+		fmt.Println()
+	}
+
+	if len(envVars) > 0 {
+		step := 2
+		if mode == systemd.ModeSystem {
+			step = 3
+		}
+		fmt.Printf("%d. Create environment file\n", step)
+		fmt.Printf("   → %s\n", systemd.EnvFilePath(serviceName, mode))
+		fmt.Println("   → Contents:")
+		for _, env := range envVars {
+			fmt.Printf("     %s\n", env)
+		}
+		fmt.Println()
+	}
+
+	stepBase := 2
+	if mode == systemd.ModeSystem {
+		stepBase = 3
+	}
+	if len(envVars) > 0 {
+		stepBase++
+	}
+
+	fmt.Printf("%d. Generate systemd service file\n", stepBase)
+	fmt.Printf("   → %s\n", systemd.ServicePath(serviceName, mode))
+	fmt.Println()
+
+	systemctlPrefix := "systemctl"
+	journalctlPrefix := "journalctl"
+	if mode == systemd.ModeUser {
+		systemctlPrefix = "systemctl --user"
+		journalctlPrefix = "journalctl --user"
+	}
+
+	fmt.Printf("%d. Reload systemd daemon\n", stepBase+1)
+	fmt.Printf("   → %s daemon-reload\n", systemctlPrefix)
+	fmt.Println()
+
+	fmt.Printf("%d. Enable service (start at boot)\n", stepBase+2)
+	fmt.Printf("   → %s enable smdctl-%s\n", systemctlPrefix, serviceName)
+	fmt.Println()
+
+	fmt.Printf("%d. Start service immediately\n", stepBase+3)
+	fmt.Printf("   → %s start smdctl-%s\n", systemctlPrefix, serviceName)
+	fmt.Println()
+
+	// Generate and show service file (mode-aware)
+	svc.Mode = mode
+
 	serviceFile := systemd.GenerateServiceFile(svc)
 
 	fmt.Println("Generated service file:")
@@ -141,6 +179,8 @@ func explainRun(args []string) error {
 	fmt.Println()
 	fmt.Println("To see the result:")
 	fmt.Printf("  smdctl status %s\n", serviceName)
+	fmt.Printf("  %s status smdctl-%s\n", systemctlPrefix, serviceName)
+	fmt.Printf("  %s -u smdctl-%s -n 100\n", journalctlPrefix, serviceName)
 
 	return nil
 }

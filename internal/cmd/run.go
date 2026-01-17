@@ -277,12 +277,17 @@ func showRecentLogs(serviceName string, lines int, mode systemd.SystemdMode) {
 	fmt.Printf("\nRecent logs (last %d lines):\n", lines)
 	fmt.Println(strings.Repeat("─", 60))
 
-	args := []string{"-u", systemd.ServiceName(serviceName), "-n", fmt.Sprintf("%d", lines), "--no-pager"}
+	var cmd *exec.Cmd
 	if mode == systemd.ModeUser {
-		args = append([]string{"--user"}, args...)
+		// User services use file-based logging
+		logFile := systemd.LogFilePath(serviceName, mode)
+		cmd = exec.Command("tail", "-n", fmt.Sprintf("%d", lines), logFile)
+	} else {
+		// System services use journalctl
+		args := []string{"-u", systemd.ServiceName(serviceName), "-n", fmt.Sprintf("%d", lines), "--no-pager"}
+		cmd = exec.Command("journalctl", args...)
 	}
 
-	cmd := exec.Command("journalctl", args...)
 	output, _ := cmd.CombinedOutput()
 	fmt.Print(string(output))
 

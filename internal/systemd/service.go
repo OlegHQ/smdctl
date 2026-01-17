@@ -61,9 +61,15 @@ func GenerateServiceFile(svc *Service) string {
 	sb.WriteString("Type=simple\n")
 
 	// ExecStart - build command with args
-	execStart := svc.Command
+	// Systemd requires absolute paths for ExecStart
+	command := svc.Command
+	if !filepath.IsAbs(command) && svc.WorkDir != "" {
+		// Convert relative path to absolute using WorkDir
+		command = filepath.Join(svc.WorkDir, command)
+	}
+	execStart := command
 	if len(svc.Args) > 0 {
-		execStart = fmt.Sprintf("%s %s", svc.Command, strings.Join(svc.Args, " "))
+		execStart = fmt.Sprintf("%s %s", command, strings.Join(svc.Args, " "))
 	}
 	sb.WriteString(fmt.Sprintf("ExecStart=%s\n", execStart))
 
@@ -117,6 +123,15 @@ func GenerateServiceFile(svc *Service) string {
 	}
 	if svc.TasksMax > 0 {
 		sb.WriteString(fmt.Sprintf("TasksMax=%d\n", svc.TasksMax))
+	}
+
+	// Logging - user services use file-based logging for reliable access
+	if svc.Mode == ModeUser {
+		logFile := LogFilePath(svc.Name, svc.Mode)
+		if logFile != "" {
+			sb.WriteString(fmt.Sprintf("StandardOutput=append:%s\n", logFile))
+			sb.WriteString(fmt.Sprintf("StandardError=append:%s\n", logFile))
+		}
 	}
 
 	sb.WriteString("\n")
@@ -177,6 +192,32 @@ func GetConfigDir(mode SystemdMode) (string, error) {
 		return "", fmt.Errorf("get home directory: %w", err)
 	}
 	return filepath.Join(homeDir, ".config/smdctl/env"), nil
+}
+
+// GetLogDir returns the log directory for the given mode
+func GetLogDir(mode SystemdMode) (string, error) {
+	if mode == ModeSystem {
+		return "/var/log/smdctl", nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home directory: %w", err)
+	}
+	return filepath.Join(homeDir, ".config/smdctl/logs"), nil
+}
+
+// LogFilePath returns the path to log file based on mode
+func LogFilePath(name string, mode SystemdMode) string {
+	if mode == ModeSystem {
+		return "" // System services use journal
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(homeDir, ".config/smdctl/logs", name+".log")
 }
 
 // ServiceName returns the full service name (with prefix)

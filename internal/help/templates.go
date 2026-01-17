@@ -8,8 +8,11 @@ func ShowMain() {
 
 DESCRIPTION:
   smdctl provides a Docker-like interface for managing systemd services.
-  It allows you to create, start, stop, and manage system services using
-  familiar Docker command syntax.
+  By default it deploys services in userspace (systemd --user).
+
+  It automatically switches to system mode (system systemd) only when:
+    - the service needs a privileged port (< 1024), or
+    - you explicitly pass --system.
 
   This tool is designed to be AI-friendly. The help output serves as
   structured guidance for LLM agents to understand available operations
@@ -82,24 +85,32 @@ YAML CONFIGURATION:
   CLI flags override YAML values:
     smdctl run -f smdctl.yml -e PORT=9090  (overrides PORT from YAML)
 
+  Note: smdctl deploys in userspace by default; it uses system mode only
+  for privileged ports (< 1024) or with --system.
+
 ENVIRONMENT VARIABLES:
-  When you use -e/--env flags, smdctl creates an environment file at:
-    /etc/smdctl/env/<service-name>.env
-    
-  You can later edit this file with:
+  When you use -e/--env flags, smdctl creates an environment file.
+
+  Default (userspace) paths:
+    Env file:     ~/.config/smdctl/env/<service-name>.env
+    Service file: ~/.config/systemd/user/smdctl-<name>.service
+
+  System mode paths (privileged port < 1024 or --system):
+    Env file:     /etc/smdctl/env/<service-name>.env
+    Service file: /etc/systemd/system/smdctl-<name>.service
+
+  You can later edit the env file with:
     smdctl env <service-name>
-    
-  This opens $EDITOR (or nano if not set) to modify the environment.
 
 PERMISSIONS:
-  Most operations require root/sudo access. If you run smdctl without
-  sudo, it will automatically prompt for your password and re-execute
-  with elevated privileges.
+  Userspace mode does not require sudo.
+  smdctl will prompt for sudo only when running in system mode
+  (privileged port < 1024 or --system).
 
 SYSTEMD INTEGRATION:
-  smdctl creates service files in: /etc/systemd/system/smdctl-<name>.service
-  Services are prefixed with 'smdctl-' to avoid conflicts with system services.
-  All operations use standard systemctl commands under the hood.
+  Services are prefixed with 'smdctl-' to avoid conflicts.
+  smdctl uses standard systemctl/journalctl commands under the hood
+  (with --user automatically when running in userspace).
 
 AI ASSISTANT WORKFLOW GUIDANCE:
   
@@ -127,8 +138,12 @@ AI ASSISTANT WORKFLOW GUIDANCE:
     1. smdctl status <name> - Check service state
     2. smdctl logs -n 100 <name> - Check recent logs
     3. smdctl inspect <name> - View full configuration
-    4. systemctl status smdctl-<name> - Raw systemd status
-    5. journalctl -u smdctl-<name> -n 100 - Raw journal logs
+    4. systemctl --user status smdctl-<name> - Raw userspace status
+    5. journalctl --user -u smdctl-<name> -n 100 - Raw userspace logs
+
+  If the service is running in system mode:
+    systemctl status smdctl-<name>
+    journalctl -u smdctl-<name> -n 100
 
 EXAMPLES:
   # Run a Python web server
@@ -183,7 +198,8 @@ OPTIONS:
   -f, --file FILE              YAML config file (default: ./smdctl.yml)
   -e, --env KEY=VALUE          Set environment variable (repeatable)
   --restart POLICY             Restart policy: no|on-failure|always (default: always)
-  --user USER                  Run as specific user
+  --system                     Force system mode (requires sudo)
+  --user USER                  Run as specific user (system mode only)
   --workdir PATH               Working directory
   --description TEXT           Service description
   --timeout-start SECONDS      Startup timeout (default: 90)
@@ -214,8 +230,9 @@ EXAMPLES:
   # Run from YAML config file
   smdctl run -f smdctl.yml
   
-  # Override YAML values with CLI flags
-  smdctl run -f smdctl.yml -e PORT=9090 --user root
+   # Force system mode (required for privileged ports < 1024)
+  smdctl run --system -f smdctl.yml
+
 
 AI WORKFLOW:
   After running this command:

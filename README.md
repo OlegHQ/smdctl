@@ -7,7 +7,7 @@ A Docker-like CLI interface for managing systemd services. Designed to be AI-fri
 - 🐳 **Docker-like syntax** - Familiar commands for systemd management
 - 🤖 **AI-friendly** - Help output designed as prompts for LLM agents
 - 📝 **YAML configuration** - Define services like docker-compose
-- 🔐 **Automatic privilege escalation** - Prompts for sudo when needed
+- 🔐 **Automatic privilege escalation** - Prompts for sudo only when needed (system mode)
 - 📊 **Resource monitoring** - View CPU and memory usage
 - 🎯 **Service lifecycle** - Create, start, stop, restart, remove
 - 📋 **Environment management** - Easy environment variable editing
@@ -117,7 +117,10 @@ Then run:
 smdctl run -f smdctl.yml
 
 # Override YAML values with CLI flags
-smdctl run -f smdctl.yml -e PORT=9090 --user root
+smdctl run -f smdctl.yml -e PORT=9090
+
+# Force system mode (required for privileged ports <1024)
+smdctl run --system -f smdctl.yml
 ```
 
 ## Commands
@@ -197,20 +200,27 @@ smdctl logs -n 100 <name>
 # 3. Inspect full configuration
 smdctl inspect <name>
 
-# 4. Raw systemd status (if needed)
-systemctl status smdctl-<name>
+# 4. Raw systemd status (userspace default)
+systemctl --user status smdctl-<name>
 
-# 5. Raw journal logs (if needed)
-journalctl -u smdctl-<name> -n 100
+# 5. Raw journal logs (userspace default)
+journalctl --user -u smdctl-<name> -n 100
+
+# If the service is running in system mode:
+# systemctl status smdctl-<name>
+# journalctl -u smdctl-<name> -n 100
 ```
 
 ## How It Works
 
-- Services are created in `/etc/systemd/system/smdctl-<name>.service`
-- Environment files are stored in `/etc/smdctl/env/<name>.env`
+- Default: deploys in userspace (systemd `--user`)
+- Switches to system mode only for privileged ports (`<1024`) or `--system`
+- Userspace unit files: `~/.config/systemd/user/smdctl-<name>.service`
+- Userspace env files: `~/.config/smdctl/env/<name>.env`
+- System mode unit files: `/etc/systemd/system/smdctl-<name>.service`
+- System mode env files: `/etc/smdctl/env/<name>.env`
 - All services are prefixed with `smdctl-` to avoid conflicts
-- Standard systemctl commands are used under the hood
-- Automatic sudo privilege escalation when needed
+- Standard `systemctl`/`journalctl` commands are used under the hood
 
 ## Examples
 
@@ -224,7 +234,7 @@ See the `examples/` directory for sample YAML configurations:
 
 - Linux with systemd
 - Go 1.21+ (for building)
-- sudo access (for most operations)
+- sudo access (only for system mode / privileged ports)
 
 ## Development
 

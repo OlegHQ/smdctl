@@ -57,10 +57,18 @@ func (m *Manager) Create(svc *Service) error {
 	content := GenerateServiceFile(svc)
 	path := ServicePath(svc.Name, svc.Mode)
 
-	// Ensure directory exists
+	// Ensure service directory exists
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create service directory: %w", err)
+	}
+
+	// For user services, create log directory
+	if svc.Mode == ModeUser {
+		logDir, err := GetLogDir(svc.Mode)
+		if err == nil {
+			_ = os.MkdirAll(logDir, 0755)
+		}
 	}
 
 	// Write service file
