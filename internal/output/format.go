@@ -87,6 +87,26 @@ func FormatServicesQuiet(services []*systemd.ServiceInfo) {
 	}
 }
 
+// FormatTasksTable formats tasks (timers) as a table
+func FormatTasksTable(tasks []*systemd.TaskInfo) {
+	if len(tasks) == 0 {
+		fmt.Println("No tasks found.")
+		return
+	}
+
+	fmt.Printf("%-15s %-15s %-6s %-17s %-17s %s\n", "SERVICE", "TASK", "MODE", "NEXT", "LAST", "TIMER")
+	fmt.Println(strings.Repeat("-", 90))
+
+	for _, t := range tasks {
+		timer := t.TimerUnit
+		if len(timer) > 35 {
+			timer = timer[:32] + "..."
+		}
+
+		fmt.Printf("%-15s %-15s %-6s %-17s %-17s %s\n", t.Service, t.Task, t.Mode, t.Next, t.Last, timer)
+	}
+}
+
 // formatBytes formats bytes into human-readable format
 func formatBytes(bytes uint64) string {
 	const unit = 1024

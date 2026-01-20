@@ -108,6 +108,22 @@ timeout_stop: 30
 private_tmp: true
 protect_system: full
 limit_nofile: 65536
+
+# Optional scheduled tasks (systemd timers)
+tasks:
+  - name: cleanup
+    description: Daily cleanup
+    command: /usr/bin/python3
+    args:
+      - -m
+      - app.cleanup
+    schedule:
+      on_calendar: daily
+
+  - name: report
+    command: /opt/app/bin/report
+    schedule:
+      on_unit_active_sec: 6h
 ```
 
 Then run:
@@ -129,6 +145,7 @@ smdctl run --system -f smdctl.yml
 
 - `run` - Create and start a new service
 - `ps` - List services
+- `tasks` - List scheduled tasks (systemd timers)
 - `start` - Start one or more services
 - `stop` - Stop one or more services
 - `restart` - Restart one or more services

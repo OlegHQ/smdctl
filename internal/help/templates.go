@@ -30,6 +30,11 @@ CORE COMMANDS:
              Example: smdctl ps
              Example: smdctl ps -a  (show all, including stopped)
              
+  tasks      List scheduled tasks (systemd timers)
+             Example: smdctl tasks
+             Example: smdctl tasks -a  (show all, including inactive)
+             Example: smdctl tasks webapp  (filter by service)
+             
   start      Start one or more services
              Example: smdctl start myapp
              
@@ -79,6 +84,16 @@ YAML CONFIGURATION:
       DEBUG: "true"
     restart: always
     timeout_start: 90
+
+    tasks:
+      - name: cleanup
+        description: Daily cleanup
+        command: /usr/bin/python3
+        args:
+          - -m
+          - app.cleanup
+        schedule:
+          on_calendar: daily
   
   Then run: smdctl run -f smdctl.yml
   

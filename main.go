@@ -26,6 +26,8 @@ func main() {
 		err = cmd.Run(args)
 	case "ps":
 		err = cmd.PS(args)
+	case "tasks":
+		err = cmd.Tasks(args)
 	case "start":
 		err = cmd.Start(args)
 	case "stop":

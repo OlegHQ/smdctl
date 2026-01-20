@@ -149,7 +149,7 @@ func (m *Manager) Start(name string) error {
 		return fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	return m.systemctl("start", ServiceName(name))
+	return m.StartUnit(ServiceName(name))
 }
 
 // Stop stops a service
@@ -158,7 +158,7 @@ func (m *Manager) Stop(name string) error {
 		return fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	return m.systemctl("stop", ServiceName(name))
+	return m.StopUnit(ServiceName(name))
 }
 
 // Restart restarts a service
@@ -176,7 +176,7 @@ func (m *Manager) Enable(name string) error {
 		return fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	return m.systemctl("enable", ServiceName(name))
+	return m.EnableUnit(ServiceName(name))
 }
 
 // Disable disables a service from starting at boot
@@ -185,7 +185,27 @@ func (m *Manager) Disable(name string) error {
 		return fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
 
-	return m.systemctl("disable", ServiceName(name))
+	return m.DisableUnit(ServiceName(name))
+}
+
+// StartUnit starts a systemd unit (service, timer, etc).
+func (m *Manager) StartUnit(unit string) error {
+	return m.systemctl("start", unit)
+}
+
+// StopUnit stops a systemd unit (service, timer, etc).
+func (m *Manager) StopUnit(unit string) error {
+	return m.systemctl("stop", unit)
+}
+
+// EnableUnit enables a systemd unit (service, timer, etc).
+func (m *Manager) EnableUnit(unit string) error {
+	return m.systemctl("enable", unit)
+}
+
+// DisableUnit disables a systemd unit (service, timer, etc).
+func (m *Manager) DisableUnit(unit string) error {
+	return m.systemctl("disable", unit)
 }
 
 // Remove removes a service
@@ -193,6 +213,9 @@ func (m *Manager) Remove(name string) error {
 	if !m.ServiceExists(name) {
 		return fmt.Errorf("%w: %s", ErrServiceNotFound, name)
 	}
+
+	// Stop/disable associated task timers and delete task files
+	_ = m.RemoveTasks(name)
 
 	// Stop service if running
 	_ = m.Stop(name)
@@ -210,9 +233,46 @@ func (m *Manager) Remove(name string) error {
 	envPath := EnvFilePath(name, m.mode)
 	_ = os.Remove(envPath)
 
+	// Remove service log file (user mode only)
+	if m.mode == ModeUser {
+		_ = os.Remove(LogFilePath(name, m.mode))
+	}
+
 	// Reload systemd daemon
 	if err := m.DaemonReload(); err != nil {
 		return fmt.Errorf("daemon reload: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveTasks removes all task units/env/logs for a service.
+func (m *Manager) RemoveTasks(serviceName string) error {
+	unitDir := filepath.Dir(ServicePath(serviceName, m.mode))
+	prefix := fmt.Sprintf("%s%s-task-", servicePrefix, serviceName)
+
+	timerPattern := filepath.Join(unitDir, fmt.Sprintf("%s%s-task-*.timer", servicePrefix, serviceName))
+	timerFiles, _ := filepath.Glob(timerPattern)
+	for _, timerFile := range timerFiles {
+		unit := filepath.Base(timerFile)
+		base := strings.TrimSuffix(unit, ".timer")
+		taskName := strings.TrimPrefix(base, prefix)
+
+		_ = m.StopUnit(unit)
+		_ = m.DisableUnit(unit)
+		_ = os.Remove(timerFile)
+
+		// Remove corresponding oneshot service unit
+		oneShotUnit := base + ".service"
+		_ = m.StopUnit(oneShotUnit)
+		_ = os.Remove(filepath.Join(unitDir, oneShotUnit))
+
+		if taskName != "" {
+			_ = os.Remove(TaskEnvFilePath(serviceName, taskName, m.mode))
+			if m.mode == ModeUser {
+				_ = os.Remove(TaskLogFilePath(serviceName, taskName, m.mode))
+			}
+		}
 	}
 
 	return nil

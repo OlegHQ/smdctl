@@ -52,24 +52,27 @@ func Run(args []string) error {
 	}
 
 	var svc *systemd.Service
+	var yamlCfg *config.ServiceConfig
 
 	// Load from YAML config if specified
 	if *configFile != "" {
-		cfg, err := config.LoadFromFile(*configFile)
+		loaded, err := config.LoadFromFile(*configFile)
 		if err != nil {
 			return fmt.Errorf("load config file: %w", err)
 		}
 
-		svc = configToService(cfg)
+		yamlCfg = loaded
+		svc = configToService(yamlCfg)
 	} else {
 		// Try to auto-discover config file
 		if autoFile, err := config.FindConfigFile(); err == nil {
 			fmt.Printf("Found config file: %s\n", autoFile)
-			cfg, err := config.LoadFromFile(autoFile)
+			loaded, err := config.LoadFromFile(autoFile)
 			if err != nil {
 				return fmt.Errorf("load config file: %w", err)
 			}
-			svc = configToService(cfg)
+			yamlCfg = loaded
+			svc = configToService(yamlCfg)
 		} else {
 			// Parse from command line args
 			svc = parseCommandLine(fs)
@@ -138,6 +141,35 @@ func Run(args []string) error {
 	// Success!
 	fmt.Printf("\n%s\n\n", systemd.ServiceName(svc.Name))
 	fmt.Printf("Service started successfully in %s mode.\n\n", svc.Mode)
+
+	// Create scheduled tasks from YAML (if any)
+	if yamlCfg != nil && len(yamlCfg.Tasks) > 0 {
+		fmt.Printf("\nCreating %d scheduled task(s)...\n", len(yamlCfg.Tasks))
+		for _, tc := range yamlCfg.Tasks {
+			task := &systemd.Task{
+				Name:        tc.Name,
+				Description: tc.Description,
+				Command:     tc.Command,
+				Args:        tc.Args,
+				WorkDir:     tc.WorkDir,
+				Environment: tc.Environment,
+				Schedule: systemd.TaskSchedule{
+					OnCalendar:         tc.Schedule.OnCalendar,
+					OnBootSec:          tc.Schedule.OnBootSec,
+					OnStartupSec:       tc.Schedule.OnStartupSec,
+					OnUnitActiveSec:    tc.Schedule.OnUnitActiveSec,
+					OnUnitInactiveSec:  tc.Schedule.OnUnitInactiveSec,
+					Persistent:         tc.Schedule.Persistent == nil || *tc.Schedule.Persistent,
+					RandomizedDelaySec: tc.Schedule.RandomizedDelaySec,
+					AccuracySec:        tc.Schedule.AccuracySec,
+				},
+			}
+
+			if err := mgr.CreateTask(svc, task); err != nil {
+				fmt.Printf("Warning: failed to create task %s: %v\n", tc.Name, err)
+			}
+		}
+	}
 
 	// Show service file location
 	servicePath := systemd.ServicePath(svc.Name, svc.Mode)
