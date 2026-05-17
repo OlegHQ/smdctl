@@ -25,7 +25,7 @@ make install
 
 # Or just build
 make build
-./bin/smdctl help
+./target/release/smdctl help
 ```
 
 ## Quick Start
@@ -250,7 +250,7 @@ See the `examples/` directory for sample YAML configurations:
 ## Requirements
 
 - Linux with systemd
-- Go 1.21+ (for building)
+- Rust 1.74+ (for building)
 - sudo access (only for system mode / privileged ports)
 
 ## Development
@@ -262,6 +262,12 @@ make build
 # Run tests
 make test
 
+# Lint (clippy with -D warnings)
+make clippy
+
+# Format
+make fmt
+
 # Clean build artifacts
 make clean
 
@@ -271,12 +277,14 @@ make install
 
 ## Design Philosophy
 
-This tool follows Go clean architecture principles:
-
-- **3-layer maximum** - main → cmd → systemd/sudo/env services
-- **No interfaces** - Concrete types until we need 2+ implementations
-- **Explicit dependencies** - Pass via function parameters, no globals
-- **Error wrapping** - Every error shows its path for debugging
+- **Layered modules** — `commands` (CLI) → `systemd` domain → `executor` seam. Keeps subprocess
+  invocations behind a trait so unit tests can drive `Manager` with a `FakeSystemctl` double.
+- **Typed errors** — `thiserror`-derived `Error` enum in the library; `clap`/`anyhow`-style
+  surfaces stay at the binary edge only.
+- **No runtime dispatch in hot paths** — concrete types everywhere except the testable
+  `Box<dyn SystemctlExec>` boundary.
+- **Strict lints** — `cargo clippy --all-targets -- -D warnings` is enforced.
+- **Explicit dependencies** — passed via function parameters; no global state.
 
 ## License
 

@@ -1,0 +1,51 @@
+smdctl run - Create and start a new systemd service
+
+USAGE:
+  smdctl run [OPTIONS] NAME -- COMMAND [ARGS...]
+  smdctl run [OPTIONS] -f FILE
+
+OPTIONS:
+  -f, --file FILE              YAML config file (default: ./smdctl.yml)
+  -e, --env KEY=VALUE          Set environment variable (repeatable)
+  --restart POLICY             Restart policy: no|on-failure|always (default: always)
+  --system                     Force system mode (requires sudo)
+  --user USER                  Run as specific user (system mode only)
+  --workdir PATH               Working directory
+  --description TEXT           Service description
+  --timeout-start SECONDS      Startup timeout (default: 90)
+  --timeout-stop SECONDS       Stop timeout (default: 30)
+  --kill-mode MODE             Kill mode: control-group|process|mixed (default: control-group)
+  --private-tmp                Use private /tmp directory
+  --protect-system LEVEL       Protect system directories: no|strict|full
+  --no-new-privileges          Prevent privilege escalation
+  --limit-nofile N             File descriptor limit
+  --after TARGET               systemd After= dependency (repeatable)
+  --wants TARGET               systemd Wants= dependency (repeatable)
+
+SYNTAX NOTE:
+  The '--' separator is REQUIRED when specifying the command inline.
+  Everything after '--' is treated as the command to run.
+
+EXAMPLES:
+  # Run a Python web server
+  smdctl run webapp -e PORT=8000 -- /usr/bin/python3 -m http.server 8000
+  
+  # Run a Node.js app with restart policy
+  smdctl run nodeapp \
+    -e NODE_ENV=production \
+    --restart always \
+    --workdir /opt/nodeapp \
+    -- /usr/bin/node server.js
+  
+  # Run from YAML config file
+  smdctl run -f smdctl.yml
+  
+   # Force system mode (required for privileged ports < 1024)
+  smdctl run --system -f smdctl.yml
+
+
+AI WORKFLOW:
+  After running this command:
+    1. Check if service started: smdctl status <name>
+    2. View logs: smdctl logs -f <name>
+    3. If failed, check: smdctl logs -n 50 <name>
