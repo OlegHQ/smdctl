@@ -1,0 +1,7 @@
+Usage: smdctl env <NAME>
+
+Arguments:
+  <NAME>  
+
+Options:
+  -h, --help  Print help

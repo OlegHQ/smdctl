@@ -1,8 +1,9 @@
-.PHONY: build install test clippy fmt clean
+.PHONY: build install test vet fmt clean
 
 # Release binary (Linux + systemd target).
 build:
-	cargo build --release
+	@mkdir -p target/release
+	go build -trimpath -ldflags="-s -w" -o target/release/smdctl ./cmd/smdctl
 	@echo "Built: target/release/smdctl"
 
 install: build
@@ -13,15 +14,15 @@ install: build
 	@echo "Run 'smdctl help' to get started"
 
 test:
-	cargo test
+	go test ./...
 
-clippy:
-	cargo clippy --all-targets -- -D warnings
+vet:
+	go vet ./...
 
 fmt:
-	cargo fmt
+	gofmt -w cmd internal
 
 clean:
-	cargo clean
+	rm -rf target
 
 .DEFAULT_GOAL := build

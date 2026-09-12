@@ -1,0 +1,7 @@
+Usage: smdctl inspect <NAME>
+
+Arguments:
+  <NAME>  
+
+Options:
+  -h, --help  Print help

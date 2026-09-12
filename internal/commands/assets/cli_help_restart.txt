@@ -1,0 +1,7 @@
+Usage: smdctl restart <NAMES>...
+
+Arguments:
+  <NAMES>...  
+
+Options:
+  -h, --help  Print help

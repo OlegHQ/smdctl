@@ -1,0 +1,8 @@
+Usage: smdctl rm [OPTIONS] <NAMES>...
+
+Arguments:
+  <NAMES>...  
+
+Options:
+  -f, --force  
+  -h, --help   Print help

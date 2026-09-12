@@ -15,9 +15,22 @@ A Docker-like CLI interface for managing systemd services. Designed to be AI-fri
 
 ## Installation
 
+Install the latest Linux release (amd64 or arm64):
+
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/OlegHQ/smdctl/releases/latest/download/smdctl-installer.sh | sh
+```
+
+The installer verifies the archive against the release's `checksums.txt` and writes only
+`smdctl` to `$HOME/.local/bin`. It does not edit shell profiles or `PATH`. Set
+`SMDCTL_INSTALL_DIR` to choose another destination, or `SMDCTL_VERSION` to install a specific
+release.
+
+To build from source instead:
+
 ```bash
 # Clone the repository
-git clone https://github.com/nexo-tech/smdctl.git
+git clone https://github.com/OlegHQ/smdctl.git
 cd smdctl
 
 # Build and install
@@ -250,7 +263,7 @@ See the `examples/` directory for sample YAML configurations:
 ## Requirements
 
 - Linux with systemd
-- Rust 1.74+ (for building)
+- Go 1.23+ (for building)
 - sudo access (only for system mode / privileged ports)
 
 ## Development
@@ -262,8 +275,8 @@ make build
 # Run tests
 make test
 
-# Lint (clippy with -D warnings)
-make clippy
+# Static analysis
+make vet
 
 # Format
 make fmt
@@ -277,14 +290,12 @@ make install
 
 ## Design Philosophy
 
-- **Layered modules** — `commands` (CLI) → `systemd` domain → `executor` seam. Keeps subprocess
-  invocations behind a trait so unit tests can drive `Manager` with a `FakeSystemctl` double.
-- **Typed errors** — `thiserror`-derived `Error` enum in the library; `clap`/`anyhow`-style
-  surfaces stay at the binary edge only.
-- **No runtime dispatch in hot paths** — concrete types everywhere except the testable
-  `Box<dyn SystemctlExec>` boundary.
-- **Strict lints** — `cargo clippy --all-targets -- -D warnings` is enforced.
-- **Explicit dependencies** — passed via function parameters; no global state.
+- **Layered packages** — `cmd/smdctl` is the executable entry point; `internal/commands` owns the
+  Cobra command tree and handlers, with systemd models and adapters in `internal/systemd`.
+- **Testable process boundary** — systemctl calls use an `Executor` interface so lifecycle behavior
+  can be verified without a running systemd manager.
+- **Ecosystem formats** — Cobra handles command parsing and yaml.v3 handles service configuration.
+- **Explicit dependencies** — adapters are passed to managers; command behavior stays at the CLI edge.
 
 ## License
 
@@ -293,6 +304,8 @@ MIT
 ## Contributing
 
 Contributions welcome! Please open an issue or PR.
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Author
 

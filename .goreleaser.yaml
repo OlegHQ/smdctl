@@ -1,0 +1,64 @@
+version: 2
+
+project_name: smdctl
+
+before:
+  hooks:
+    - go mod verify
+    - go test ./...
+
+builds:
+  - id: smdctl
+    main: ./cmd/smdctl
+    binary: smdctl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/OlegHQ/smdctl/internal/commands.version={{ .Version }}
+
+archives:
+  - id: smdctl
+    ids:
+      - smdctl
+    formats:
+      - tar.gz
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  github:
+    owner: OlegHQ
+    name: smdctl
+  header: |
+    ## Install smdctl {{ .Version }}
+
+    Linux (amd64 and arm64):
+
+    ```sh
+    curl --proto '=https' --tlsv1.2 -LsSf https://github.com/OlegHQ/smdctl/releases/download/{{ .Tag }}/smdctl-installer.sh | SMDCTL_VERSION={{ .Version }} sh
+    ```
+
+    The installer verifies the archive against `checksums.txt` and writes only to `$HOME/.local/bin`.
+    It does not modify shell profiles or `PATH`.
+  extra_files:
+    - glob: ./scripts/smdctl-installer.sh

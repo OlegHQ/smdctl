@@ -1,0 +1,25 @@
+Docker-like systemd service CLI (Linux)
+
+Usage: smdctl [COMMAND]
+
+Commands:
+  run         
+  ps          
+  tasks       
+  start       
+  stop        
+  restart     
+  logs        
+  status      
+  rm          
+  env         
+  inspect     
+  explain     
+  migrate     
+  regenerate  
+  help        Show structured help (same as running `smdctl` with no args)
+  version     Print version
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version

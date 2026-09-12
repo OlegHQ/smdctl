@@ -1,5 +1,7 @@
-# Rust
+# Go build output
 /target/
+/bin/
+/dist/
 
 # IDE
 .vscode/

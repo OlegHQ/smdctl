@@ -1,0 +1,6 @@
+Print version
+
+Usage: smdctl version
+
+Options:
+  -h, --help  Print help

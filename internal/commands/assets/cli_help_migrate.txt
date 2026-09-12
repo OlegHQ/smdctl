@@ -1,0 +1,4 @@
+Usage: smdctl migrate
+
+Options:
+  -h, --help  Print help

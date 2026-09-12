@@ -1,0 +1,11 @@
+Usage: smdctl logs [OPTIONS] <SERVICE>
+
+Arguments:
+  <SERVICE>  
+
+Options:
+  -f, --follow         
+  -n, --lines <LINES>  [default: 50]
+      --since <SINCE>  
+      --until <UNTIL>  
+  -h, --help           Print help

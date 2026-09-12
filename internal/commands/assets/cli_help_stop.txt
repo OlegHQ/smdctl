@@ -1,0 +1,7 @@
+Usage: smdctl stop <NAMES>...
+
+Arguments:
+  <NAMES>...  
+
+Options:
+  -h, --help  Print help

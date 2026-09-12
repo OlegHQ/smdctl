@@ -1,0 +1,7 @@
+Usage: smdctl ps [OPTIONS]
+
+Options:
+  -a, --all              
+  -q, --quiet            
+  -o, --output <OUTPUT>  [default: table] [possible values: table, json]
+  -h, --help             Print help

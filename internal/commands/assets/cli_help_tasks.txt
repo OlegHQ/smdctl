@@ -1,0 +1,9 @@
+Usage: smdctl tasks [OPTIONS] [FILTER]
+
+Arguments:
+  [FILTER]  Optional service name filter
+
+Options:
+  -a, --all              
+  -o, --output <OUTPUT>  [default: table] [possible values: table, json]
+  -h, --help             Print help

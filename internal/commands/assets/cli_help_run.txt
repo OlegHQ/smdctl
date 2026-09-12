@@ -1,0 +1,20 @@
+Usage: smdctl run [OPTIONS]
+
+Options:
+  -f, --file <FILE>                      
+      --system                           
+  -e, --env <ENV>                        
+      --restart <RESTART>                
+      --user <USER>                      
+      --workdir <WORKDIR>                
+      --description <DESCRIPTION>        
+      --timeout-start <TIMEOUT_START>    
+      --timeout-stop <TIMEOUT_STOP>      
+      --kill-mode <KILL_MODE>            
+      --private-tmp                      
+      --protect-system <PROTECT_SYSTEM>  
+      --no-new-privileges                
+      --limit-nofile <LIMIT_NOFILE>      
+      --after <AFTER>                    
+      --wants <WANTS>                    
+  -h, --help                             Print help

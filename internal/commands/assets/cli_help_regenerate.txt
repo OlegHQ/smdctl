@@ -1,0 +1,7 @@
+Usage: smdctl regenerate <NAME>
+
+Arguments:
+  <NAME>  
+
+Options:
+  -h, --help  Print help

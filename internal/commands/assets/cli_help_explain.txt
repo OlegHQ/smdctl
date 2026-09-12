@@ -1,0 +1,7 @@
+Usage: smdctl explain [REST]...
+
+Arguments:
+  [REST]...  
+
+Options:
+  -h, --help  Print help
