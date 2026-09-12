@@ -5,6 +5,10 @@ All notable changes to `smdctl` are documented here. This project follows
 
 ## [Unreleased]
 
+### Added
+
+- MIT license file, included in release archives.
+
 ## [0.1.0] - 2026-09-12
 
 ### Added
